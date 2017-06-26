@@ -1,0 +1,128 @@
+\documentclass[11pt,twoside,a5paper]{article}
+
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.2cm,right=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{verbatim}
+\usepackage[normalem]{ulem} % for striking out with \sout
+\usepackage{amsfonts,amsmath,amssymb} % for more math support
+\usepackage{times}
+\usepackage[italic]{mathastext} % use normal text font (times) in equations
+\usepackage{enumitem}
+%\usepackage[draft]{hyperref}
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{color}
+
+\newcommand{\bfx}{{\bf x}}
+\newcommand{\bfy}{{\bf y}}
+\newcommand{\bfz}{{\bf z}}
+
+\newcommand{\norm}{{\cal N}}
+
+\begin{document}
+\title{Emulators: How they work}
+\author{Tom McClintock}
+\maketitle
+
+\noindent Note: all of this comes from David Barber's book 
+{\bf Bayesian Reasoning and Machine Learning}.
+
+\section{Multivariate Gaussian}
+
+A multivariate Gaussian distribution is given by
+\begin{equation}
+  \label{eq:multivariate_gaussian}
+  p(\bfx|\mu,\Sigma) = \norm(\bfx|\mu,\Sigma)= \frac{1}{\sqrt{\det(2\pi\Sigma)}}\exp\left(-\frac{1}{2}(\bfx-\mu)^T\Sigma^{-1}(\bfx-\mu)\right)
+\end{equation}
+where $\mu$ is the mean vector of the distribution, $\Sigma$ is the covariance matrix. Note that the inverse covariance $\Sigma^{-1}$ is called the precision matrix.
+
+\section{Partitioned Gaussian}
+
+A feature of multivariate Gaussians for our purposes is the idea of a {\it partitioned} multivariate Gaussian. Consider $\norm(\bfz|\mu,\Sigma)$ defined jointly over two vectors $\bfx$ and $\bfy$ of potentially different dimensions,
+\begin{equation}
+  \label{eq:z}
+  \bfz = \begin{pmatrix}
+    \bfx\\ \bfy
+    \end{pmatrix}
+\end{equation}
+with corresponding mean and partitioned covariance
+\begin{equation}
+  \label{eq:partitioned_mean}
+  \mu = \begin{pmatrix}
+    \mu_x\\ \mu_y
+  \end{pmatrix}
+\end{equation}
+\begin{equation}
+  \label{eq:partitioned_cov}
+  \Sigma = \begin{pmatrix}
+    \Sigma_{xx} & \Sigma_{xy} \\
+    \Sigma_{yx} & \Sigma_{yy}
+  \end{pmatrix}
+\end{equation}
+where $\Sigma_{xy}=\sigma_{yx}$. The marginal distribution is given by
+\begin{equation}
+  \label{eq:marginal_distribution}
+  p(\bfx) = \norm(\bfx|\mu_x,\ \Sigma_{xx})
+\end{equation}
+but the {\it conditional} distribution is given by
+\begin{equation}
+  \label{eq:conditional_distribution}
+  p(\bfx|\bfy) = \norm(\bfx|\mu_x+\Sigma_{xy}\Sigma_{yy}^{-1}(\bfy-\mu_y),\ 
+  \Sigma_{xx} - \Sigma_{xy}\Sigma_{yy}^{-1}\Sigma_{yx}).
+\end{equation}
+In other words, we have separated two parts of a multivarate Gaussian, and written the conditional probability of one vector given the other. Note that if there is no correlation $\Sigma_{xy}=0$ then \ref{eq:conditional_distribution} reduces to \ref{eq:marginal_distribution}.
+
+\section{Gaussian Process}
+
+A Gaussian process is a process by which we assume that given some set of observations $\bfy(\bfx)$, a future observation $y^*(x^*)$ is drawn from a multivariate Gaussian, given by \ref{eq:conditional_distribution}. ({\bf Note}: Gaussian processes always assume that $\bar{\bfy}=0$, or that $\mu_y$ has already been subtracted off of $\bfy$ and can be added on later.)
+
+Further, since every $y$ is a function of some location in the domain $x$, we assume that we have some function (the {\it kernel} function) that describes the covariance between observations made at different locations in the domain $k(x_1,x_2)$. Therefore, any element of a covariance matrix constructed between observations is given by
+\begin{equation}
+  \label{eq:kernel}
+  [K]_{1,2} = k(x_1,x_2).
+\end{equation}
+This means that the covariance matrix of the observations $\bfy$ is
+\begin{equation}
+  \label{eq:K_matrix}
+  [K_{x,x}]_{i,j} = k(x_i,x_j),\ \ \ i,j=1,...,N
+\end{equation}
+where $N$ are the number of observations. Additionally, the covariance between the prediction $y^*$ and the observations $\bfy$ is a vector
+\begin{equation}
+  \label{eq:K_matrix}
+  [K_{x,x^*}]_{i} = k(x_i,x^*),\ \ \ i=1,...,N.
+\end{equation}
+
+Since $\bfy$ and $y^*$ form a multivariate Gaussian, we can immediately write down a prediction and uncertainty on that prediction from \ref{eq:conditional_distribution}
+\begin{equation}
+  \label{eq:gaussian_process}
+  p(y^*|\bfy) = \norm(y^* | K_{x^*x}K_{xx}^{-1}\bfy,\ 
+  K_{x^*x^*} - K_{x^*x}K_{xx}^{-1}K_{xx^*})
+\end{equation}
+where $K_{xx^*} = K_{x^*x}^T$. If the observations $\bfy$ have variances assiciated with them, $\sigma^2$ then we make the transformation $K_{xx}\rightarrow K_{xx}+{\bf I}\sigma^2$.
+
+\section{Kernel Functions}
+
+The kernel function (aka covariance function) isn't specified apriori, and in general could take almost any form. In Barber's book he explains in detail how different functions are appropriate for different purposes. In general, we will use the squared exponential kernel
+\begin{equation}
+  \label{eq:se_kernel}
+  k(\bfx_1,\bfx_2) = k(|\bfx_1-\bfx_2|) = k_0\exp\left(-\frac{1}{2}\frac{(\bfx_1-\bfx_2)^2}{L}\right).
+\end{equation}
+where $k_0$ is the covariance amplitude, and $L$ is known as the ``kernel length''. The domain $\bfx$ can be multidimensional, with each dimension having slightly different meanings (e.g. $\Omega_m$, $w$, $\sigma_8$ in cosmology), so $L$ is actually an array containing a kernel length for each dimension. These parameters $k_0$ and $L$ are known as {\it hyperparameters} in the literature.
+
+\section{Hyperparameters}
+
+Values for the hyperparameters aren't random, but are informed by the observations. In general, $L$ corresponds to the ``feature size'', or the approximate size in the domain of features in your observations, while $k_0$ is approximately the size of the error bars of your data.
+
+The best way to find an optimal choice of hyperparameters is to write a likelihood of your observations which you can then maximize. This likelihood is
+\begin{equation}
+  \label{eq:likelihood}
+  \log p(\bfy | \bfx) = -\frac{1}{2}\bfy^TK_{xx}^{-1}\bfy - \frac{1}{2}\log\det(2\pi K_{xx}).
+\end{equation}
+This also lets you obtain full posteriors for your hyperparameters, which can be propogated forward into uncertainties into $y^*$ if you want to be thorough.
+
+\section{Complexity and Limitations}
+
+Training a Gaussian process is $O(N^3)$ in time because it requires matrix inversion (faster if you have smart inverters), and $O(N^2)$ in space because it requires the matrix to be stored completely. Therefore, as your training data becomes large the algorithm becomes unweildy. Note: in very specific instances this can be mitigated, see Foreman-Mackay et al. 2017 (https://arxiv.org/abs/1703.09710).
+
+If an optimizer is used to find the hyperparameters, then the resulting Gaussian process will be sensitive to the optimizer used. The best advice I can give is to try a few methods and see what works best.
+
+\end{document}
