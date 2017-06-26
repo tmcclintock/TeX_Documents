@@ -1,3 +1,9 @@
+# emacs backup files
+*~
+
+# other pdflatex files
+*.dvi
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof

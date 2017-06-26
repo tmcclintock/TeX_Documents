@@ -110,7 +110,7 @@ where $k_0$ is the covariance amplitude, and $L$ is known as the ``kernel length
 
 \section{Hyperparameters}
 
-Values for the hyperparameters aren't random, but are informed by the observations. In general, $L$ corresponds to the ``feature size'', or the approximate size in the domain of features in your observations, while $k_0$ is approximately the size of the error bars of your data.
+Values for the hyperparameters aren't random, but are informed by the observations. In general, $L$ corresponds to the ``feature size'', or the approximate size in the domain of features in your observations, while $\sqrt{k_0}$ is the error bar on an uncorrelated prediction. Another way to interpret $\sqrt{k_0}$ is the error bar on a prediction from a Gaussian process that is extrapolating.
 
 The best way to find an optimal choice of hyperparameters is to write a likelihood of your observations which you can then maximize. This likelihood is
 \begin{equation}
