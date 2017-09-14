@@ -57,6 +57,13 @@ where $L$ is a lower triangular matrix (and therefore has $N(N-1)/2$ indepenent 
 
 Before moving on, I should note that elements of $L$ can take on any numerical value, but since $D$ is semi-positive then we will work with $\ln D = d$ instead. In other words, we will work with the logarithm of the elements of $D$. This is important because the Gaussian process wouldn't have knowledge that $D$ is semi-positive, and could yield unphysical predictions.
 
+We also subtract of the mean of all $d$ values and rescale the values of $d$ so that they have variance 1. This looks like
+\begin{equation}
+  \label{eq:rescale}
+  d \rightarrow \frac{d - \bar{d}}/\sigma_d.
+\end{equation}
+This makes PCA described next slightly cleaner. When making the prediction, once we have $d$ from the Gaussian processes, we can transform it back to its original form by multiplying on $\sigma_d$ and adding $\bar{d}$. The same treatment goes for the avlues of $L$.
+
 \section{PCA on the GCD parts}
 Let's pretend that we have run $M$ different simulations (so for us, $M\sim16$). Let's think just about $d$ first. If we take all the $d$s obtained for each $M$ simulation and ``stack'' them on top of each other into a new matrix $\dc$ which is now $N\times M$ (row/column order doesn't matter). Performing PCA on this gives us
 \begin{equation}
@@ -65,10 +72,14 @@ Let's pretend that we have run $M$ different simulations (so for us, $M\sim16$).
 \end{equation}
 where if $p=\min(N,M)$ then $U$ is a $N\times p$ matrix with $U^TU=I_p$, $V$ is a $M\times p$ with $V^TV=I_p$ and $VV^T=I_M$, and $B$ is $p\times p$ diagonal matrix of singular values. Basis vectors are formed by $\Phi = \frac{1}{\sqrt{M}}UB$ which is $N\times p$, with weights $w=\sqrt{M}V^T$ normalized by $\frac{1}{\sqrt{M}}w^Tw=I_M$. The columns of $\Phi$, which are of length $N$, represent descreasingly important principle components of the original matrix $\dc$. This means we only need to use the first few of them. In the Coyote papers they found that using the first five was sufficient. This will be something to test.
 
-%The quantities that we wish to emulate, which
+The $i$th column of $\Phi$ corresponds to the $i$th row of $w$, or $w_i$. This $w_i$ has mean zero, and (according to the papers...) contains all of the cosmologial dependence, and is also a function of the domain. 
+
+In the coyote papers, the domain was $k$, whereas in our paper we have this very strange behaviour where the domain is not monotonic, since the ``full'' data vector is a combination of a bunch of data vectors. In other words, looking at Figure 5 of Elizabeth's paper, the data vectors are $\xi_+$, $\xi_-$, $\gamma_t$, and $w$. The domain is not monotonically changing along the edge, which isn't viable for design of the emulator. We will have to think of something, like using just bin number or something. The downside of doing so would mean that the number of bins would have to remain fixed forever.
 
 \section{Gaussian Process}
+In this design if we keep five columns then we would utilize five interpolators. We can do this because the weights are all independent of each other, so the prediction by one interpolator is independent of any other interpolator. The challenge we have is to figure out the best way to interpolate $w_i$ across cosmologies and domain. Gaussian processes (GPs) were used in the past because they provide an estimate of the expectation value $\langle w_i(\Omega,x)\rangle$ as well as an estimate of the variance ${\rm Var}(w_i)$. Note that we could achieve the same thing if we defined a model (a line, a quadratic, something else) for $w_i$ and knew the posterior distributions of the parameters in our model. Using GPs or such a model means that we can propogate the uncertainty in our estimate forward in a Bayesian way. On the other hand this could be computational expensive and end up being not adding much to a cosomological analysis.
 
+I'll fill the rest of this out later, but the important thing that we care about is picking kernels with hyperparameters, writing a likelihood, and then finding the best hyperparameters.
 
 
 \end{document}
